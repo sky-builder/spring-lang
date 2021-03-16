@@ -49,13 +49,26 @@ function compile(tokens) {
     let curr = 0;
     let len = tokens.length;
     function plusExpression() {
+        if (curr >= len) return;
         let left = tokens[curr];
-        let op = tokens[curr + 1];
-        let right = tokens[curr + 2];
+        curr += 1;
+        if (curr >= len) return left;
+        let op = tokens[curr];
+        curr += 1;
+        let right = plusExpression();
         return new PLUS_EXPRESSION(op, left, right);
     }
     let node = plusExpression();
+    console.log({node})
     return node;
+}
+
+function evaluate(x) {
+    if (x instanceof Token) {
+        return Number(x.value);
+    } else if (x instanceof PLUS_EXPRESSION) {
+        return evaluate(x.left) + evaluate(x.right);
+    }
 }
 
 function execute(root) {
@@ -63,7 +76,7 @@ function execute(root) {
     let {left, right} = root
     switch(op.type) {
         case 'plus': {
-            let result = Number(left.value) + Number(right.value);
+            let result = evaluate(left) + evaluate(right);
             console.log({result})
             break;
         }
@@ -79,6 +92,7 @@ function main() {
     })
     rs.on('close', () => {
         let tokens = getTokens(source);
+        console.log({tokens})
         let ast = compile(tokens);
         execute(ast);
     })
