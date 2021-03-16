@@ -27,6 +27,9 @@ function getTokens(source) {
         } else if (c === '+') {
             let token = new Token('plus');
             tokens.push(token);
+        } else if (c === '-') {
+            let token = new Token('minus');
+            tokens.push(token);
         }
         curr += 1;
         prev = curr;
@@ -39,28 +42,72 @@ function PLUS_EXPRESSION(op, left, right) {
     this.left = left;
     this.right = right;
 }
+function MINUS_EXPRESSION(op, left, right) {
+    this.op = op;
+    this.left =left;
+    this.right =right;
+}
 
+
+const ptable = {
+    'minus': 1,
+    'plus': 1
+}
 /**
- * plus expression: number op plus expression
+ * plus expression: number [op plus expression]
+ * minus expression: plus expression [op plus expression]
+ * 1 + 1 - 1
+ * 1 - 1 + 1
  * 
  */
 function compile(tokens) {
-    let prev = 0;
     let curr = 0;
     let len = tokens.length;
-    function plusExpression() {
-        if (curr >= len) return;
-        let left = tokens[curr];
-        curr += 1;
-        if (curr >= len) return left;
-        let op = tokens[curr];
-        curr += 1;
-        let right = plusExpression();
-        return new PLUS_EXPRESSION(op, left, right);
+    let p1 = tokens[curr];
+    curr += 1;
+    function compare(t1, t2) {
+        let table = {
+            'plus': 2,
+            'minus': 2
+        }
+        let x1 = table[t1.type];
+        let x2 = table[t2.type];
+        return x1 - x2;
     }
-    let node = plusExpression();
-    console.log({node})
-    return node;
+    function isOp(t) {
+        return t.type === 'plus' || t.type === 'minus';
+    }
+    function exp() {
+        let p2 = tokens[curr];
+        let exp = fn(p1, p2);
+        console.log({p2, exp})
+        curr += 1;
+        if (curr <= tokens.length && isOp(tokens[curr])) {
+            exp = fn(exp, tokens[curr]);
+        }
+        return exp;
+    }
+    function getExp(op, left, right) {
+        let exp = op.type === 'plus' ? PLUS_EXPRESSION : MINUS_EXPRESSION;
+        return new exp(op, left, right);
+    }
+    function fn(left, op) {
+        curr += 1;
+        let right = tokens[curr];
+        console.log({right});
+        if (curr + 1 >= tokens.length) return getExp(op, left, right);
+        let tt = tokens[curr + 1];
+        if (compare(op, tt) >= 0) return getExp(op, left, right)
+        else return exp();
+    }
+    let exps = [];
+    while(curr < len) {
+        let e = exp();
+        exps.push(e);
+        curr += 1;
+    }
+    console.log({exps})
+    return exps;
 }
 
 function evaluate(x) {
@@ -68,6 +115,8 @@ function evaluate(x) {
         return Number(x.value);
     } else if (x instanceof PLUS_EXPRESSION) {
         return evaluate(x.left) + evaluate(x.right);
+    } else if (x instanceof MINUS_EXPRESSION) {
+        return evaluate(x.left) - evaluate(x.right);
     }
 }
 
@@ -77,6 +126,11 @@ function execute(root) {
     switch(op.type) {
         case 'plus': {
             let result = evaluate(left) + evaluate(right);
+            console.log({result})
+            break;
+        }
+        case 'minus': {
+            let result = evaluate(left) - evaluate(right);
             console.log({result})
             break;
         }
@@ -94,7 +148,7 @@ function main() {
         let tokens = getTokens(source);
         console.log({tokens})
         let ast = compile(tokens);
-        execute(ast);
+        execute(ast[0]);
     })
 }
 
