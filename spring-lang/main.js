@@ -30,6 +30,9 @@ function getTokens(source) {
         } else if (c === '-') {
             let token = new Token('minus');
             tokens.push(token);
+        } else if (c === '*') {
+            let token = new Token('times');
+            tokens.push(token);
         }
         curr += 1;
         prev = curr;
@@ -48,11 +51,6 @@ function MINUS_EXPRESSION(op, left, right) {
     this.right =right;
 }
 
-
-const ptable = {
-    'minus': 1,
-    'plus': 1
-}
 /**
  * plus expression: number [op plus expression]
  * minus expression: plus expression [op plus expression]
@@ -60,45 +58,73 @@ const ptable = {
  * 1 - 1 + 1
  * 
  */
+
+function TIMES_EXPRESSION(op, left, right) {
+   this.op = op;
+   this.left = left;
+   this.right = right;
+}
+
+
 function compile(tokens) {
     let curr = 0;
     let len = tokens.length;
-    let p1 = tokens[curr];
+    let p1 = p2 = tokens[curr];
     curr += 1;
     function compare(t1, t2) {
         let table = {
             'plus': 2,
-            'minus': 2
+            'minus': 2,
+            'times': 3
         }
         let x1 = table[t1.type];
         let x2 = table[t2.type];
         return x1 - x2;
     }
     function isOp(t) {
-        return t.type === 'plus' || t.type === 'minus';
+        return t && (t.type === 'plus' || t.type === 'minus' || t.type === 'times');
     }
     function exp() {
-        let p2 = tokens[curr];
+        p1 = tokens[curr - 1];
+        p2 = tokens[curr];
+        console.log({ p1, p2})
         let exp = fn(p1, p2);
-        console.log({p2, exp})
-        curr += 1;
-        if (curr <= tokens.length && isOp(tokens[curr])) {
+        console.log({exp, curr, tokens})
+        while (curr + 1 <= tokens.length && isOp(tokens[curr + 1])) {
+            console.log('haha')
+            curr += 1;
             exp = fn(exp, tokens[curr]);
         }
         return exp;
     }
+    
     function getExp(op, left, right) {
-        let exp = op.type === 'plus' ? PLUS_EXPRESSION : MINUS_EXPRESSION;
-        return new exp(op, left, right);
+        let e;
+        if (op.type === 'plus') {
+            e = PLUS_EXPRESSION;
+        } else if (op.type === 'minus') {
+            e = MINUS_EXPRESSION;
+        } else if (op.type === 'times'){ 
+            e = TIMES_EXPRESSION;
+        }
+        console.log({e})
+        return new e(op, left, right);
     }
     function fn(left, op) {
         curr += 1;
         let right = tokens[curr];
-        console.log({right});
         if (curr + 1 >= tokens.length) return getExp(op, left, right);
         let tt = tokens[curr + 1];
-        if (compare(op, tt) >= 0) return getExp(op, left, right)
-        else return exp();
+        if (compare(op, tt) >= 0) {
+            console.log('hit')
+            return getExp(op, left, right)
+        }
+        else {
+            curr += 1;
+            console.log('nani?')
+            let e = getExp(op, left, exp());
+            return  e
+        } 
     }
     let exps = [];
     while(curr < len) {
@@ -106,7 +132,6 @@ function compile(tokens) {
         exps.push(e);
         curr += 1;
     }
-    console.log({exps})
     return exps;
 }
 
@@ -117,6 +142,8 @@ function evaluate(x) {
         return evaluate(x.left) + evaluate(x.right);
     } else if (x instanceof MINUS_EXPRESSION) {
         return evaluate(x.left) - evaluate(x.right);
+    } else if (x instanceof TIMES_EXPRESSION) {
+        return evaluate(x.left) * evaluate(x.right);
     }
 }
 
@@ -134,6 +161,11 @@ function execute(root) {
             console.log({result})
             break;
         }
+        case 'times': {
+            let result = evaluate(left) * evaluate(right);
+            console.log({result})
+            break;
+        }
     }
 }
 
@@ -148,6 +180,7 @@ function main() {
         let tokens = getTokens(source);
         console.log({tokens})
         let ast = compile(tokens);
+        console.log({ast})
         execute(ast[0]);
     })
 }
